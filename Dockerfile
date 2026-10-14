@@ -7,6 +7,8 @@ COPY . .
 RUN npm run build
 FROM node:24-trixie-slim@sha256:173f125896c3b47ddf056734c7ea789d04595a6a08769a8f78e0df642781fb66
 WORKDIR /app
+ARG SWELL_COMMIT_SHA=unknown
+ENV APP_COMMIT_SHA=$SWELL_COMMIT_SHA
 ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=8080 HOSTNAME=0.0.0.0
 COPY --from=build --chown=node:node /app/.next/standalone ./
 COPY --from=build --chown=node:node /app/.next/static ./.next/static
