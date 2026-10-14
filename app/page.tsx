@@ -1,34 +1,23 @@
-"use client";
-import { useEffect, useState, type FormEvent } from 'react';
-type Info = { name: string; version: string; region: string; framework: string };
-export default function Home() {
-  const [info, setInfo] = useState<Info | null>(null);
-  const [status, setStatus] = useState('연결 확인 중');
-  const [name, setName] = useState('swell');
-  const [result, setResult] = useState('이름을 입력하고 서버에 인사를 보내 보세요.');
-  const [busy, setBusy] = useState(false);
-  useEffect(() => {
-    const controller = new AbortController();
-    Promise.all(['/health', '/api/info'].map(path => fetch(path, { cache: 'no-store', signal: controller.signal }).then(r => {if (!r.ok) throw new Error('서버 연결 실패'); return r.json();})))
-      .then(([health, data]) => {if (health.status !== 'ok') throw new Error('헬스체크 실패');setInfo(data);setStatus('서버 응답 정상');})
-      .catch(err => {if (err.name !== 'AbortError') setStatus('연결 실패 · 새로고침해 주세요');});
-    return () => controller.abort();
-  }, []);
-  async function greet(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();setBusy(true);
-    try {const response = await fetch('/api/hello?name=' + encodeURIComponent(name), {cache:'no-store'});const data = await response.json();if (!response.ok) throw new Error(data.error || '요청 실패');setResult(data.message);}
-    catch (error) {setResult(error instanceof Error ? error.message : '서버에 연결할 수 없습니다.');}
-    finally {setBusy(false);}
-  }
-  return <main>
-    <nav><span className="brand">swell.</span><a href="https://github.com/zel0rd/swell-demo-nextjs">GitHub ↗</a></nav>
-    <p className="eyebrow">DEPLOYMENT PLAYGROUND / NEXT.JS</p>
-    <h1>작은 앱으로,<br/>첫 배포를 확인하세요.</h1>
-    <p className="muted">Next.js App Router로 만든 테스트 웹사이트입니다. 페이지 로딩부터 서버 API와 헬스체크까지, 한 화면에서 확인해 보세요.</p>
-    <span className="status" role="status">{status}</span>
-    <section className="grid" aria-label="서버 정보"><div className="card"><small>FRAMEWORK</small><span className="value">Next.js</span></div><div className="card"><small>APP VERSION</small><span className="value">{info?.version ?? '—'}</span></div><div className="card"><small>DEMO REGION</small><span className="value">{info?.region ?? '—'}</span></div></section>
-    <section className="card"><h2>서버에 인사하기</h2><label htmlFor="name">이름</label><form onSubmit={greet}><input id="name" value={name} onChange={e=>setName(e.target.value)} maxLength={100} required/><button disabled={busy}>{busy ? '요청 중…' : 'API 호출'}</button></form><p className="response" aria-live="polite">{result}</p><small><code>GET /api/hello?name=swell</code></small></section>
-    <section className="card"><h2>배포 확인 포인트</h2><p><a href="/health">/health</a>에서 JSON 응답을 확인하고, <a href="/api/info">/api/info</a>에서 현재 앱 버전을 확인하세요. 버전을 바꿔 다시 배포하면 롤링 업데이트도 테스트할 수 있습니다.</p><small>데이터베이스와 외부 API 키가 필요 없는 독립 실행 예제입니다.</small></section>
-    <footer>SWELL by PADO · Build small. Scale beyond.</footer>
-  </main>;
+'use client';
+import {useEffect,useRef,useState,type FormEvent} from 'react';
+type Project={id:string;name:string;category:string;subtitle:string;description:string;color:string;year:string};
+const projects:Project[]=[
+ {id:'field',name:'FIELD',category:'브랜딩',subtitle:'일상의 속도를 바꾸는 라이프스타일',description:'자연의 리듬을 담은 라이프스타일 브랜드의 콘셉트입니다. 명확한 워드마크와 차분한 색, 손에 닿는 듯한 패키지로 오래 쓰고 싶은 브랜드 경험을 제안합니다.',color:'field',year:'2026'},
+ {id:'form',name:'form & function',category:'웹사이트',subtitle:'물건보다, 그 안에 담긴 이야기',description:'독립 가구 스튜디오를 위한 에디토리얼 웹사이트 콘셉트입니다. 제품의 형태와 소재를 큰 화면으로 보여주고, 제작 과정을 자연스럽게 읽을 수 있는 흐름을 설계했습니다.',color:'form',year:'2026'},
+ {id:'orbit',name:'orbit',category:'디지털 제품',subtitle:'팀의 다음 움직임을 한눈에',description:'복잡한 팀 업무를 명확하게 정리하는 디지털 작업 공간 콘셉트입니다. 우선순위, 진행 상태, 팀의 다음 목표를 한 화면에 담아 제품의 사용성을 탐색합니다.',color:'orbit',year:'2026'},
+ {id:'still',name:'STILL',category:'브랜딩',subtitle:'잠시 멈추고, 다시 나답게',description:'작은 독립 출판사를 위한 시각적 정체성 콘셉트입니다. 여백, 종이의 색, 절제된 타이포그래피를 중심으로 책과 독자의 관계를 표현합니다.',color:'still',year:'2026'}
+];
+export default function Home(){
+ const [filter,setFilter]=useState('전체'),[selected,setSelected]=useState<Project|null>(null),[brief,setBrief]=useState(false),[downloaded,setDownloaded]=useState(false);
+ const projectDialog=useRef<HTMLDialogElement>(null),briefDialog=useRef<HTMLDialogElement>(null);
+ useEffect(()=>{if(selected)projectDialog.current?.showModal();},[selected]);
+ useEffect(()=>{if(brief)briefDialog.current?.showModal();},[brief]);
+ function downloadBrief(e:FormEvent<HTMLFormElement>){e.preventDefault();const f=new FormData(e.currentTarget);const content=`PADO STUDIO · 프로젝트 브리프\n\n프로젝트: ${f.get('project')}\n필요한 작업: ${f.get('service')}\n소개: ${f.get('description')}\n`;const url=URL.createObjectURL(new Blob([content],{type:'text/plain;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='pado-project-brief.txt';a.click();URL.revokeObjectURL(url);setDownloaded(true);}
+ return <><nav className="nav"><a href="#" className="logo" aria-label="PADO Studio 홈">pado<span>®</span><small>INDEPENDENT DIGITAL STUDIO</small></a><div className="nav-links"><a href="#work">프로젝트</a><a href="#about">스튜디오</a><button className="nav-contact" onClick={()=>{setBrief(true);setDownloaded(false);}}>브리프 작성 <span>↗</span></button></div></nav>
+ <main><section className="hero"><div className="hero-top"><span className="eyebrow"><i/> SMALL STUDIO. OPEN POSSIBILITIES.</span><span className="hero-number">SEOUL · DIGITAL EVERYWHERE</span></div><h1>좋은 아이디어를,<br/><em>오래 남는 경험으로.</em></h1><div className="hero-bottom"><p>브랜드의 첫인상부터 매일 쓰는 디지털 제품까지.<br/>파도는 생각을 선명하게 만들고, 경험으로 연결합니다.</p><a className="round-link" href="#work">프로젝트 둘러보기 <span>↗</span></a></div><div className="hero-art" aria-label="유기적인 초록색 파도 그래픽"><div className="art-grid"/><div className="ribbon r-one"/><div className="ribbon r-two"/><div className="ribbon r-three"/><span className="art-word">a new<br/><em>perspective.</em></span><span className="art-caption">PADO / VISUAL EXPLORATIONS / 001</span><span className="art-index">↗</span></div></section>
+ <section id="work" className="work"><div className="section-heading"><div><span className="eyebrow">01 / SELECTED CONCEPTS</span><h2>다양한 형태의 가능성.</h2><p>브랜드와 디지털 경험을 탐색하는 콘셉트 프로젝트입니다.</p></div><div className="filters" aria-label="프로젝트 분류">{['전체','브랜딩','웹사이트','디지털 제품'].map(v=><button key={v} aria-pressed={filter===v} className={filter===v?'chosen':''} onClick={()=>setFilter(v)}>{v}</button>)}</div></div><div className="project-grid">{projects.filter(p=>filter==='전체'||p.category===filter).map(p=><button className="project" key={p.id} onClick={()=>setSelected(p)} aria-label={`${p.name} 프로젝트 보기`}><div className={`project-art ${p.color}`}><span className="project-type">{p.category.toUpperCase()} / {p.year}</span>{p.id==='field'?<><div className="field-box">FIELD<span>Objects for<br/>a slower everyday.</span></div><div className="field-shadow"/></>:p.id==='form'?<><div className="chair"><div/><i/><b/></div><span className="form-word">form<span>& function</span></span></>:p.id==='orbit'?<div className="orbit-ui"><header>orbit <span>Workspace / Overview</span></header><strong>Make room for<br/>your next idea.</strong><div className="orbit-columns"><div>PLAN<i/><i/><i/></div><div>IN PROGRESS<i/><i/></div><div>DONE<i/></div></div></div>:<><div className="book book-back"/><div className="book">STILL<small>On the art<br/>of paying attention.</small><span>VOL. 01 / SLOW DAYS</span></div></>}<span className="art-arrow">↗</span></div><div className="project-title"><div><h3>{p.name}</h3><p>{p.subtitle}</p></div><span>{p.category}</span></div></button>)}</div></section>
+ <section id="about" className="about"><div><span className="eyebrow">02 / HOW WE THINK</span><h2>작은 디테일이<br/>큰 차이를 만듭니다.</h2></div><div className="about-copy"><p>화려한 장식보다 분명한 이유를, 익숙한 답보다 새로운 관점을 찾습니다. 생각의 시작부터 마지막 인터랙션까지 하나의 이야기가 되도록 만듭니다.</p><div className="services">{[['01','브랜드의 방향','브랜드 전략 · 시각적 정체성 · 디자인 시스템'],['02','디지털의 경험','웹사이트 · 인터페이스 · 인터랙션'],['03','아이디어의 구현','프로토타입 · 프론트엔드 · 제품 실험']].map(([n,title,body])=><div key={n}><small>{n}</small><div><h3>{title}</h3><p>{body}</p></div><span>↗</span></div>)}</div></div></section>
+ <section className="contact"><span className="eyebrow">03 / YOUR NEXT CHAPTER</span><h2>다음 아이디어,<br/>여기서 시작해 볼까요?</h2><button onClick={()=>{setBrief(true);setDownloaded(false);}}>프로젝트 브리프 작성하기 <span>↗</span></button><p>생각을 정리하고 텍스트 파일로 가져가세요.</p></section></main><footer className="footer"><a className="logo" href="#">pado<span>®</span></a><span>Independent ideas. Thoughtful experiences.</span><a href="https://github.com/zel0rd/swell-demo-nextjs" target="_blank" rel="noopener noreferrer">오픈소스 프로젝트 ↗</a><small>© 2026 PADO · Concept studio</small></footer>
+ <dialog ref={projectDialog} onClose={()=>setSelected(null)}><button className="close" aria-label="프로젝트 닫기" onClick={()=>projectDialog.current?.close()}>×</button>{selected&&<><span className="eyebrow">CONCEPT PROJECT / {selected.category}</span><h2>{selected.name}</h2><h3>{selected.subtitle}</h3><p>{selected.description}</p><div className={`detail-art ${selected.color}`}>{selected.name}<span>AN EXPLORATION BY PADO STUDIO</span></div><p className="note">실제 고객 실적이 아닌 디자인 콘셉트 프로젝트입니다.</p></>}</dialog>
+ <dialog ref={briefDialog} onClose={()=>setBrief(false)}><button className="close" aria-label="브리프 닫기" onClick={()=>briefDialog.current?.close()}>×</button><span className="eyebrow">LET’S MAKE IT CLEAR</span><h2>아이디어의 첫 페이지.</h2><p>작성한 내용은 서버에 전송하거나 저장하지 않습니다.</p><form onSubmit={downloadBrief}><label>프로젝트 이름<input name="project" required maxLength={100} placeholder="어떤 프로젝트를 준비하고 있나요?"/></label><label>필요한 작업<select name="service"><option>웹사이트</option><option>브랜딩</option><option>디지털 제품</option></select></label><label>아이디어 소개<textarea name="description" required maxLength={5000} rows={4} placeholder="만들고 싶은 경험과 목표를 적어 주세요."/></label><button className="submit" type="submit">브리프 다운로드 ↓</button>{downloaded&&<p role="status">브리프 파일을 다운로드했습니다. 이 창에서 계속 수정할 수 있습니다.</p>}</form></dialog></>;
 }
