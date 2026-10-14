@@ -28,7 +28,7 @@ npm run typecheck
 
 웹사이트: http://localhost:8080
 
-`.env.example`은 변수 참고용입니다. Next.js 개발 실행에서는 `.env.local`로 복사할 수 있습니다.
+`env.example`은 변수 참고용입니다. Next.js 개발 실행에서는 `.env.local`로 복사할 수 있습니다. 생성한 `.env.local`은 Git에 올리지 마세요.
 `APP_NAME`, `APP_VERSION`, `DEMO_REGION`은 공개 표시용 값입니다. 여기에 비밀 값을 넣지 마세요. 기본 포트는 `8080`; 컨테이너는 런타임 `PORT`를 따릅니다.
 
 ## Docker 실행
@@ -106,3 +106,5 @@ curl --cacert /path/to/swell/.local/pki/ca.crt \
 GitHub Actions에서 TypeScript 검사, production build, non-root Docker 실행과 HTTP smoke test를 수행합니다. 클라우드 서비스나 registry로 이미지를 자동 배포하지 않습니다.
 
 MIT License.
+
+`swell` 소스 검사는 `.env*` 파일을 차단하므로 변수 예시는 `env.example`이라는 이름을 사용합니다.
